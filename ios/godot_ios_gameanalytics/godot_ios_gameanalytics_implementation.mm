@@ -3,100 +3,84 @@
 //
 
 #import <Foundation/Foundation.h>
-#include "core/config/project_settings.h"
 #import "godot_ios_gameanalytics_implementation.h"
-#import "godot_ios_gameanalytics-Swift.h"
 
-// Signal Names
-String const SIGNAL_SIMPLE = "on_simple_signal";
-String const SIGNAL_WITH_DATA = "on_data_signal";
-String const SIGNAL_FROM_SWIFT_VOID = "on_swift_void_signal";
-String const SIGNAL_FROM_SWIFT_DATA = "on_swift_data_signal";
+#import "GameAnalytics/GameAnalytics.h"
 
 void GodotIosGameanalytics::_bind_methods() {
-    // Bind methods from .h
-    ClassDB::bind_method(D_METHOD("hello_world"), &GodotIosGameanalytics::hello_world);
-    
-    ClassDB::bind_method(D_METHOD("test_simple_signal"), &GodotIosGameanalytics::test_simple_signal);
-    ClassDB::bind_method(D_METHOD("test_data_signal", "message"), &GodotIosGameanalytics::test_data_signal);
-    ClassDB::bind_method(D_METHOD("test_swift_void"), &GodotIosGameanalytics::test_swift_void);
-    ClassDB::bind_method(D_METHOD("test_swift_data"), &GodotIosGameanalytics::test_swift_data);
-    //
-    
-    // 2. Register Signals
-    // Signal 1: Empty from .mm
-    ADD_SIGNAL(MethodInfo(SIGNAL_SIMPLE));
-    
-    // Signal 2: With Parameter (String) from .mm
-    ADD_SIGNAL(MethodInfo(SIGNAL_WITH_DATA, PropertyInfo(Variant::STRING, "message")));
-    
-    // Signal 3: Empty from Swift
-    ADD_SIGNAL(MethodInfo(SIGNAL_FROM_SWIFT_VOID));
-    
-    // Signal 4: With parameter from Swift
-    ADD_SIGNAL(MethodInfo(SIGNAL_FROM_SWIFT_DATA, PropertyInfo(Variant::STRING, "swift_data")));
-}
-
-//hello world message from .mm and .swift
-void GodotIosGameanalytics::hello_world() {
-    NSLog(@"GodotIosGameanalytics - Hello world from Objective C++!");
-    [GodotIosGameanalyticsSwift helloWorldFromSwift];
-}
-
-
-// --- Direct C++ Signals ---
-
-void GodotIosGameanalytics::test_simple_signal() {
-    NSLog(@"GodotIosGameanalytics: Emitting simple signal directly");
-    emit_signal(SIGNAL_SIMPLE);
-}
-
-void GodotIosGameanalytics::test_data_signal(const String &message) {
-    NSLog(@"GodotIosGameanalytics: Emitting data signal directly");
-    emit_signal(SIGNAL_WITH_DATA, message);
-}
-
-// --- Signals from Swift ---
-
-void GodotIosGameanalytics::test_swift_void() {
-    NSLog(@"GodotIosGameanalytics: Calling Swift task...");
-    
-    // We need a pointer to 'this' instance to use inside the block
-    GodotIosGameanalytics *plugin_instance = this;
-    
-    // Create Swift instance
-    GodotIosGameanalyticsSwift *swift = [[GodotIosGameanalyticsSwift alloc] init];
-    
-    // Call Swift method with a completion block (Closure)
-    [swift doSwiftTaskWithCompletion:^ {
-        NSLog(@"GodotIosGameanalytics: Swift task done. Emitting signal deferred.");
-        
-        // SAFETY: Use call_deferred because Swift might call this from a background thread
-        plugin_instance->call_deferred("emit_signal", SIGNAL_FROM_SWIFT_VOID);
-    }];
-}
-
-void GodotIosGameanalytics::test_swift_data() {
-    NSLog(@"GodotIosGameanalytics: Requesting data from Swift...");
-    
-    GodotIosGameanalytics *plugin_instance = this;
-    GodotIosGameanalyticsSwift *swift = [[GodotIosGameanalyticsSwift alloc] init];
-    
-    [swift getSwiftDataWithCompletion:^(NSString * _Nonnull result) {
-        NSLog(@"GodotIosGameanalytics: Received data from Swift: %@", result);
-        
-        // Convert NSString to Godot String
-        String godot_string = String(result.UTF8String);
-        
-        // Emit signal with data safely
-        plugin_instance->call_deferred("emit_signal", SIGNAL_FROM_SWIFT_DATA, godot_string);
-    }];
+    ClassDB::bind_method(D_METHOD("init", "gameKey", "secretKey"), &GodotIosGameanalytics::init);
+    ClassDB::bind_method(D_METHOD("set_enabled_verbose_log", "flag"), &GodotIosGameanalytics::set_enabled_verbose_log);
+    ClassDB::bind_method(D_METHOD("set_enabled_info_log", "flag"), &GodotIosGameanalytics::set_enabled_info_log);
+    ClassDB::bind_method(D_METHOD("set_enabled_event_submission", "flag"), &GodotIosGameanalytics::set_enabled_event_submission);
+    ClassDB::bind_method(D_METHOD("add_impression_event", "adNetworkVersion", "data"), &GodotIosGameanalytics::add_impression_event);
 }
 
 GodotIosGameanalytics::GodotIosGameanalytics() {
-    NSLog(@"GodotIosGameanalytics constructor");
+    NSLog(@"[GodotGameAnalytics] Plugin initialized");
 }
 
 GodotIosGameanalytics::~GodotIosGameanalytics() {
-    NSLog(@"GodotIosGameanalytics destructor");
+    NSLog(@"[GodotGameAnalytics] Plugin deinitialized");
+}
+
+void GodotIosGameanalytics::init(const String &game_key, const String &secret_key) {
+    // Конвертация строк Godot -> NSString
+    NSString *nsGameKey = [NSString stringWithUTF8String:game_key.utf8().get_data()];
+    NSString *nsSecretKey = [NSString stringWithUTF8String:secret_key.utf8().get_data()];
+    
+    [GameAnalytics initializeWithGameKey:nsGameKey gameSecret:nsSecretKey];
+    
+    NSLog(@"[GodotGameAnalytics] Initialized with Key: %@", nsGameKey);
+}
+
+void GodotIosGameanalytics::set_enabled_verbose_log(bool flag) {
+    [GameAnalytics setEnabledVerboseLog:flag];
+}
+
+void GodotIosGameanalytics::set_enabled_info_log(bool flag) {
+    [GameAnalytics setEnabledInfoLog:flag];
+}
+
+void GodotIosGameanalytics::set_enabled_event_submission(bool flag) {
+    [GameAnalytics setEnabledEventSubmission:flag];
+    NSLog(@"[GodotGameAnalytics] Event submission enabled: %s", flag ? "true" : "false");
+}
+
+void GodotIosGameanalytics::add_impression_event(const String &ad_network_version, const Dictionary &data) {
+    NSString *nsAdNetworkVersion = [NSString stringWithUTF8String:ad_network_version.utf8().get_data()];
+    
+    NSMutableDictionary *impressionData = [[NSMutableDictionary alloc] init];
+    Array keys = data.keys();
+    
+    for (int i = 0; i < keys.size(); i++) {
+        Variant key = keys[i];
+        Variant value = data[key];
+        
+        String keyStr = key.operator String();
+        NSString *nsKey = [NSString stringWithUTF8String:keyStr.utf8().get_data()];
+        
+        id nsValue = nil;
+        
+        if (value.get_type() == Variant::INT) {
+            nsValue = [NSNumber numberWithInt:(int)value];
+        }
+        else if (value.get_type() == Variant::FLOAT) {
+            nsValue = [NSNumber numberWithDouble:(double)value];
+        }
+        else if (value.get_type() == Variant::BOOL) {
+            nsValue = [NSNumber numberWithBool:(bool)value];
+        }
+        else {
+            String valStr = value.operator String();
+            nsValue = [NSString stringWithUTF8String:valStr.utf8().get_data()];
+        }
+        
+        if (nsKey && nsValue) {
+            [impressionData setValue:nsValue forKey:nsKey];
+        }
+    }
+    
+    [GameAnalytics addImpressionMaxEventWithAdNetworkVersion:nsAdNetworkVersion impressionData:impressionData];
+    
+    NSLog(@"[GodotGameAnalytics] Sent ad_impression: %@", impressionData);
 }

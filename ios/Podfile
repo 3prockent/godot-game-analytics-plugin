@@ -8,7 +8,7 @@ workspace "#{plugin_name}"
 
 target "#{plugin_name}" do
 	platform :ios, '13.0'
-	pod 'GA-SDK-IOS', '~> 4.11.0'
+	pod 'GA-SDK-IOS', '4.11.1'
 end
 
 post_install do |installer|
