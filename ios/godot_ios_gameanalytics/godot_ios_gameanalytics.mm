@@ -23,6 +23,7 @@ void godot_ios_gameanalytics_deinit() {
 	NSLog(@"deinit plugin");
 	
 	if (plugin) {
-	   memdelete(plugin);
+        // memdelete(plugin); // Убираем или комментируем
+        plugin = nullptr; // Просто "забываем" адрес
    }
 }
